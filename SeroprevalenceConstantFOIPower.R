@@ -15,14 +15,16 @@ source("SeroprevalenceFOISimFunc.R")
 # that high and low risk areas have the same seroprevalence
 res.tab.fn <- function(...) {
   # create template data set
-  dat <- simulateSeroprevalence(lowLambda=0.02
-                         ,highLambda=0.04
+  dat <- simulateSeroprevalence(lowLambda=0.01
+                         ,highLambda=0.02
                          ,n.village=18
-                         ,n.hh=15
+                         ,n.hh=10
                          ,people.in.household=2
                          ,ageMin=1
-                         ,ageMax=10
-                         ,sdLogFOI=0.03
+                         ,ageMax=70
+                         ,ageMean=10
+                         ,sdLogFOI=0.1
+                         ,ageSD=2
                          ,distAge="uniform")
   
   fit <- glm(Infected~risk.level

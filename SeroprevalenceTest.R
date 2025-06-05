@@ -25,9 +25,9 @@ propImmFuncV <- Vectorize(propImmFunc)
 #******************'true' FOI and Study design parameters*************
 lowLambda <- 0.02
 highLambda <- 0.04
-sdLogFOI <- 0.03
+sdLogFOI <- 0.2
 # sampling / design choices
-n.village <- 2    # number of villages
+n.village <- 18    # number of villages
 n.hh <- 10         # number of households per village
 people.in.household <- 2
 
@@ -40,6 +40,7 @@ dat$FOI[dat$risk.level==0.5] <- highLambda
 
 # add village-level FOI variation
 dat$villageFOI <- exp(rnorm(length(dat$village),mean=log(dat$FOI),sd=sdLogFOI))
+hist(dat$villageFOI)
 
 # randomly assign an age  - simplest option uniform
 dat$age <- NA
