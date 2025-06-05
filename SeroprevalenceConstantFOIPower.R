@@ -18,7 +18,7 @@ res.tab.fn <- function(...) {
   dat <- simulateSeroprevalence(lowLambda=0.01
                          ,highLambda=0.02
                          ,n.village=18
-                         ,n.hh=10
+                         ,n.hh=15
                          ,people.in.household=2
                          ,ageMin=1
                          ,ageMax=70
@@ -34,7 +34,8 @@ res.tab.fn <- function(...) {
   
   fit0 <- update(fit, ~ . - risk.level)
   pval <- lrtest(fit, fit0)[2,5]
-  return(pval)
+  coefs <- coef(fit)
+  return(c(pval,coefs))
 }
 
 
@@ -56,6 +57,11 @@ end - start
 
 
 # estimate power
-sim.res <- do.call(rbind,sim.res)
-length(sim.res[sim.res<=0.05])
+pvals <- c(sapply(sim.res,"[[",1))
+length(pvals[pvals<=0.05])
 
+risk.level <- c(sapply(sim.res,"[[",3))
+plot(risk.level)
+var(risk.level)
+range(risk.level)
+# 360  - 0.15 - 1.3

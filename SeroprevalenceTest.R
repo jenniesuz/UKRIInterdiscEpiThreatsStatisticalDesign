@@ -40,6 +40,7 @@ dat$FOI[dat$risk.level==0.5] <- highLambda
 
 # add village-level FOI variation
 dat$villageFOI <- exp(rnorm(length(dat$village),mean=log(dat$FOI),sd=sdLogFOI))
+
 hist(dat$villageFOI)
 
 # randomly assign an age  - simplest option uniform
