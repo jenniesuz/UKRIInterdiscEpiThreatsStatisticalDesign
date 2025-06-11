@@ -15,17 +15,17 @@ source("SeroprevalenceFOISimFunc.R")
 # that high and low risk areas have the same seroprevalence
 res.tab.fn <- function(...) {
   # create template data set
-  dat <- simulateSeroprevalence(lowLambda=0.01
-                         ,highLambda=0.02
+  dat <- simulateSeroprevalence(lowLambda=0.02
+                         ,highLambda=0.03
                          ,n.village=18
                          ,n.hh=15
                          ,people.in.household=2
                          ,ageMin=1
                          ,ageMax=70
-                         ,ageMean=10
+                         ,ageMean=20
                          ,sdLogFOI=0.1
                          ,ageSD=2
-                         ,distAge="uniform")
+                         ,distAge="gaussian")
   
   fit <- glm(Infected~risk.level
       ,family=binomial(link="cloglog")
@@ -64,4 +64,4 @@ risk.level <- c(sapply(sim.res,"[[",3))
 plot(risk.level)
 var(risk.level)
 range(risk.level)
-# 360  - 0.15 - 1.3
+# difference between 0.02 and 0.03, 18 sites 15 hh 2per hh 90% 540, uniform between 1 and 70

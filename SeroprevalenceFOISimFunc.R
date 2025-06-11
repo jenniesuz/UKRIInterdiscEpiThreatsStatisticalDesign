@@ -10,7 +10,7 @@ propImmFuncV <- Vectorize(propImmFunc)
 
 
 simulateSeroprevalence <- function(lowLambda=0.02
-                                   ,highLambda=0.04
+                                   ,highLambda=0.03
                                    ,sdLogFOI=0.1
                                    ,n.village=50
                                    ,n.hh=10
