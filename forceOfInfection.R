@@ -84,7 +84,7 @@ plot_foi_estimates(seromodel=seromodel,serosurvey=chikv)
 # 2025 to 1995
 
 years <- seq(1970,2025,1)
-fois <- rep(0.00,length(years))
+fois <- rep(0.01,length(years))
 fois[20:30] <- 0.04
 fois[50:56] <- 0.06
 
@@ -104,14 +104,16 @@ probExp <- numeric(length(birthYears))
 for(i in 1:length(birthYears)){probExp[i] <- 1-prod(yf$probSus[yf$years>birthYears[i]])}
 plot(ages,probExp)
 
-denom <- 10
+denom <- 5
 
 ageInf <- cbind.data.frame(ages,probExp)
 ageInf$seropos <- sapply(1:length(ageInf$probExp),function(x){
   sum((rbinom(n=denom,size=1,prob=ageInf$probExp[x])))
 })
 ageInf$n <- denom
-
+ageInf$n[ageInf$AgeGroup %in% "15-19"] <- 20
+ageInf$n[ageInf$AgeGroup %in% "20-24"] <- 20
+ageInf$n[ageInf$AgeGroup %in% "25-29"] <- 20
 
 labs <- c(paste(seq(0, 55, by = 5), seq(0 + 5 - 1, 60- 1, by = 5),
                 sep = "-"), paste(60, "+", sep = ""))
@@ -129,13 +131,6 @@ simsero <- simsero[,-1]
 simsero$survey_year <- 2025
 
 sum(simsero$n_sample)
-
-seromodel <- fit_seromodel(
-  serosurvey = simsero
-)
-
-plot_seromodel(seromodel=seromodel,serosurvey=simsero)
-plot_foi_estimates(seromodel=seromodel,serosurvey=simsero)
 
 
 foii <- get_foi_index(simsero,group_size=5,model_type="time")
