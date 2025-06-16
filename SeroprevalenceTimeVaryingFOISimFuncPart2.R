@@ -1,4 +1,5 @@
 library(stringr)
+library(serofoi)
 # set up data frame with varying FOIs
 
 myTryCatch <- function(expr) {
@@ -57,7 +58,7 @@ simulateTVFOI <- function(foiByYears=yf
   
   foii <- get_foi_index(simsero,group_size=5,model_type="time")
   test <- myTryCatch(fit_seromodel(
-    serosurvey = sims,
+    serosurvey = simsero,
     model_type = "time",
     foi_index = data.frame(
       year = min(foii$year):max(foii$year),
@@ -83,6 +84,7 @@ simulateTVFOI <- function(foiByYears=yf
   ciRange <- mean(modOutput$upper - modOutput$lower)
   nsamples <- sum(simsero$n_sample)
   return(c(acc,ciRange,nsamples))
+
 }
 
 
@@ -114,10 +116,68 @@ clusterExport(cl, varlist=c("simulateTVFOI"
                             ,"get_foi_index"
                             ,"fit_seromodel"
                             ),
-              envir=environment())               
+              envir=environment())     
+
+clusterEvalQ(cl, {
+  library(stringr)
+  library(serofoi)
+  library(plyr)   
+})
+
 
 start <- Sys.time()
-sim.res <- parLapply(cl,1,simulateTVFOI(sampleSizeByAge=30)) 
+sim.res <- parLapply(cl,1:100, 
+function(i){
+  simulateTVFOI(foiByYears=yf,
+                ageMin=1,
+                ageMax=55,
+                sampleSizeByAge=35)
+})
 stopCluster(cl)   # stop the clusters
 end <- Sys.time()
 end - start
+
+ss40 <- do.call(rbind.data.frame,sim.res)
+ss40Means <- colMeans(ss40)
+names(ss40Means) <- c("acc","uncert","sampleSize")
+
+ss35 <- do.call(rbind.data.frame,sim.res)
+ss35Means <- colMeans(ss35)
+names(ss35Means) <- c("acc","uncert","sampleSize")
+
+ss30 <- do.call(rbind.data.frame,sim.res)
+ss30Means <- colMeans(ss30)
+names(ss30Means) <- c("acc","uncert","sampleSize")
+
+ss25 <- do.call(rbind.data.frame,sim.res)
+ss25Means <- colMeans(ss25)
+names(ss25Means) <- c("acc","uncert","sampleSize")
+
+ss20 <- do.call(rbind.data.frame,sim.res)
+ss20Means <- colMeans(ss20)
+names(ss20Means) <- c("acc","uncert","sampleSize")
+
+ss15 <- do.call(rbind.data.frame,sim.res)
+ss15Means <- colMeans(ss15)
+names(ss15Means) <- c("acc","uncert","sampleSize")
+
+ss10 <- do.call(rbind.data.frame,sim.res)
+ss10Means <- colMeans(ss10)
+names(ss10Means) <- c("acc","uncert","sampleSize")
+
+ss5 <- do.call(rbind.data.frame,sim.res)
+ss5Means <- colMeans(ss5)
+names(ss5Means) <- c("acc","uncert","sampleSize")
+
+compareRes <- rbind.data.frame(ss40Means,ss35Means,ss30Means,ss25Means,ss20Means,ss15Means,ss10Means,ss5Means)
+names(compareRes) <- c("acc","uncert","sampleSize")
+
+saveRDS(compareRes,"compareRes.rds")
+
+ggplot(compareRes) +
+  geom_point(aes(x=sampleSize,y=acc))
+
+
+ggplot(compareRes) +
+  geom_point(aes(x=sampleSize,y=uncert))
+
