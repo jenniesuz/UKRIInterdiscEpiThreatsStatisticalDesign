@@ -78,7 +78,7 @@ simulateTVFOI <- function(foiByYears=yf
   
   modOutput$trueVal <- trueFOISummary[,2]
   modOutput$yearGrp <- trueFOISummary[,1]
-
+  modOutput$sampleSize <- sum(simsero$n_sample)
   return(modOutput)
 
 }
@@ -100,8 +100,6 @@ simulateTVFOI(foiByYears=yf
               ,ageMax=ama
               ,sampleSizeByAge=10)
 
-
-
 #****************************************************************
 library(parallel)
 
@@ -120,18 +118,46 @@ clusterEvalQ(cl, {
   library(plyr)   
 })
 
+sampleSize <- c(5,10,15,20,25,30)
 
 start <- Sys.time()
-sim.res <- parLapply(cl,1:100, 
-function(i){
-  simulateTVFOI(foiByYears=yf,
-                ageMin=1,
-                ageMax=55,
-                sampleSizeByAge=35)
-})
+sim.res <- parLapply(cl,sampleSize,function(x){
+  nsim <- 1
+  sims <- vector(mode='list', length=nsim)
+  
+  while(nsim<=1000){
+    sims[[nsim]] <- simulateTVFOI(foiByYears=yf,
+                  ageMin=1,
+                  ageMax=55,
+                  sampleSizeByAge=x)
+    sims[[nsim]][,7] <- nsim
+    nsim <- nsim+1
+  }
+  
+    sims <- do.call(rbind.data.frame,sims)
+    bias <- ddply(sims,.(yearGrp),summarise,bias=mean(median-trueVal))
+    variance <- ddply(sims,.(yearGrp),summarise,variance=mean((median-mean(trueVal))^2))
+    vals <- cbind.data.frame(bias,variance)
+    mse <- vals$bias^2+vals$variance
+    vals$mse <- mse
+    vals$sampleSize <- sims$sampleSize[1]
+  return(vals)
+}) 
 stopCluster(cl)   # stop the clusters
 end <- Sys.time()
 end - start
+
+sim.res <- do.call(rbind.data.frame,sim.res)
+sim.res <- sim.res[,-1]
+
+
+saveRDS(sim.res,"tvfoiSims.rds")
+
+ggplot(sim.res) +
+  geom_point(aes(x=sampleSize,y=mse)) +
+  facet_wrap(~yearGrp)
+
+
 
 
 

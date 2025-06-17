@@ -7,61 +7,82 @@ library(binom)
 library(plyr)
 library(ggplot2)
 library(lmtest)
+library(grid)
+library(gridExtra)
 
 source("SeroprevalenceFOISimFunc.R")
 
-#*************Simulate, model fit and calculate p-value************
-# function to simulate data and estimate p-value for null hypothesis 
-# that high and low risk areas have the same seroprevalence
-res.tab.fn <- function(...) {
-  # create template data set
-  dat <- simulateSeroprevalence(lowLambda=0.02
-                         ,highLambda=0.03
-                         ,n.village=18
-                         ,n.hh=15
-                         ,people.in.household=2
-                         ,ageMin=1
-                         ,ageMax=70
-                         ,ageMean=20
-                         ,sdLogFOI=0.1
-                         ,ageSD=2
-                         ,distAge="gaussian")
-  
-  fit <- glm(Infected~risk.level
-      ,family=binomial(link="cloglog")
-      ,offset=log(age)
-      ,data=dat)
-  
-  fit0 <- update(fit, ~ . - risk.level)
-  pval <- lrtest(fit, fit0)[2,5]
-  coefs <- coef(fit)
-  return(c(pval,coefs))
+
+# accuracy and precision
+accPrecFunc <- function(risk.level=risk,llambda=0.01,hlambda=0.02){
+  bias <- mean(risk.level-(llambda/hlambda))
+  variance <- mean((risk.level-mean(risk.level))^2)
+  mse <- bias^2+variance
+  return(mse)
 }
 
 
-# no of data sets to simulate (1000 takes ~ 4 min)
-nsim <- 1000
 
+#*************Simulate, model fit ************
+
+numHH <- c(5:30)
 
 # repeat simulations many times and calculate p-value
 cl <- makeCluster(detectCores()-1)               # get cores from your computer - 1
-clusterExport(cl, varlist=c("res.tab.fn","simulateSeroprevalence","propImmFuncV","lrtest"),
+clusterExport(cl, varlist=c("simulateSeroprevalence","propImmFuncV","accPrecFunc"),
               envir=environment())               
 
 
-start <- Sys.time()
-sim.res <- parLapply(cl,1:nsim,res.tab.fn) 
+  start <- Sys.time()
+  sim.res <- parLapply(cl,numHH,function(x){
+    nsim <- 1
+    risk <- numeric(nsim)
+    pval <- numeric(nsim)
+    while(nsim<1000){
+      dat <- simulateSeroprevalence(lowLambda=0.01
+                                    ,highLambda=0.02
+                                    ,n.village=18
+                                    ,n.hh=x
+                                    ,people.in.household=1
+                                    ,ageMin=5
+                                    ,ageMax=60
+                                    ,ageMean=20
+                                    ,sdLogFOI=0.5
+                                    ,ageSD=2
+                                    ,distAge="uniform")
+    
+      fit <- glm(Infected~risk.level
+                 ,family=binomial(link="cloglog")
+                 ,offset=log(age)
+                 ,data=dat)
+     pvals <- coef(summary(fit))[,4]
+     pval[nsim] <- pvals[2]
+     risk[nsim] <- coef(fit)[2]
+     nsim <- nsim+1
+    }
+    mse <- accPrecFunc(risk.level=risk)
+    ss <- x*18
+    pwr <- length(pval[pval<=0.05])/nsim
+  return(c(ss,mse,pwr))
+  }) 
 stopCluster(cl)   # stop the clusters
 end <- Sys.time()
 end - start
 
 
-# estimate power
-pvals <- c(sapply(sim.res,"[[",1))
-length(pvals[pvals<=0.05])
+sims <- do.call(rbind.data.frame,sim.res)
+names(sims) <- c("samplesize","MSE","pwr")
 
-risk.level <- c(sapply(sim.res,"[[",3))
-plot(risk.level)
-var(risk.level)
-range(risk.level)
-# difference between 0.02 and 0.03, 18 sites 15 hh 2per hh 90% 540, uniform between 1 and 70
+msePlot <- ggplot(sims) +
+  geom_point(aes(x=samplesize,y=MSE)) +
+  xlab("Sample size") +
+  ylab("Mean squared error") +
+  theme(text = element_text(size = 20))
+
+pwerPlot <- ggplot(sims) +
+  geom_point(aes(x=samplesize,y=pwr*100)) +
+  xlab("Sample size") +
+  ylab("Power (%)") +
+  theme(text = element_text(size = 20))
+
+grid.arrange(msePlot,pwerPlot,ncol=2)

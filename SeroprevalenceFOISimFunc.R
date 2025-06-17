@@ -8,18 +8,18 @@ propImmFunc <- function(lambda, age){
 propImmFuncV <- Vectorize(propImmFunc)
 #********************************************************************
 
-
-simulateSeroprevalence <- function(lowLambda=0.02
-                                   ,highLambda=0.03
-                                   ,sdLogFOI=0.1
-                                   ,n.village=50
+#************function to simulate seroprevalence data******************
+simulateSeroprevalence <- function(lowLambda=0.02      # lower force of infection
+                                   ,highLambda=0.03    # high force of infection
+                                   ,sdLogFOI=0.2       # to add in variation between sites
+                                   ,n.village=50       
                                    ,n.hh=10
                                    ,people.in.household=2
                                    ,ageMin=1
                                    ,ageMax=70
                                    ,ageMean=25
                                    ,ageSD=3
-                                   ,distAge="uniform"
+                                   ,distAge="uniform"  
                                    ){
 
 
@@ -31,16 +31,18 @@ simulateSeroprevalence <- function(lowLambda=0.02
   dat$FOI[dat$risk.level==0.5] <- highLambda
 
   # add village-level FOI variation
-  dat$villageFOI <- exp(rnorm(length(dat$village),mean=log(dat$FOI),sd=sdLogFOI))
-
-  # randomly assign an age  - simplest option for now uniform
+  dat$villageFOI <- rlnorm(length(dat$village),mean=log(dat$FOI),sd=sdLogFOI)
+  # add household-level FOI variation
+  dat$hhFOI <- rlnorm(length(dat$village),mean=log(dat$villageFOI),sd=sdLogFOI)
+  
+  # randomly assign an age  - simplest option uniform
   dat$age <- NA
   if(distAge=="uniform"){
   dat$age<-sapply(1:length(dat$age),function(x){round(runif(1,ageMin,ageMax),0)})}else{
     dat$age<-sapply(1:length(dat$age),function(x){round(rnorm(1,25,0))})
   }
   # calculate true prob immune
-  dat$probImm <- propImmFuncV(lambda=dat$villageFOI,age=dat$age) #
+  dat$probImm <- propImmFuncV(lambda=dat$hhFOI,age=dat$age) #
 
   # from 'true' proportion immune to random variation                                    
   dat$Infected <- sapply(1:length(dat$probImm),function(x){
@@ -49,4 +51,34 @@ simulateSeroprevalence <- function(lowLambda=0.02
 
 return(dat)
 }
+#************************************************************************
 
+
+
+dat <- simulateSeroprevalence(lowLambda=0.01
+                       ,highLambda=0.02
+                       ,n.village=5
+                       ,n.hh=5
+                       ,people.in.household=2
+                       ,ageMin=1
+                       ,ageMax=60
+                       ,ageMean=20
+                       ,sdLogFOI=0.5
+                       ,ageSD=2
+                       ,distAge="uniform")
+
+
+ggplot(dat) +
+  geom_point(aes(x=age,y=probImm,col=risk.level))
+
+
+
+fit <- glm(Infected~risk.level
+           ,family=binomial(link="cloglog")
+           ,offset=log(age)
+           ,data=dat)
+
+fit0 <- update(fit, ~ . - risk.level)
+pval <- lrtest(fit, fit0)[2,5]
+coefs <- coef(fit)  
+coefs
