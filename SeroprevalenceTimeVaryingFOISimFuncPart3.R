@@ -1,5 +1,6 @@
 library(stringr)
 library(serofoi)
+library(plyr)
 # set up data frame with varying FOIs
 
 myTryCatch <- function(expr) {
@@ -153,9 +154,12 @@ sim.res <- sim.res[,-1]
 
 saveRDS(sim.res,"tvfoiSims.rds")
 
-ggplot(sim.res) +
+ggplot(sim.res[sim.res$yearGrp %in% "2019-2023",]) +
   geom_point(aes(x=sampleSize,y=mse)) +
-  facet_wrap(~yearGrp)
+  xlab("Sample size") +
+  ylab("Mean squared error") +
+  theme(text = element_text(size = 20))
+ # facet_wrap(~yearGrp)
 
 
 
